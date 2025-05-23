@@ -1,0 +1,7 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    streams:
+      application-id: views-app
+      properties:
+        processing.guarantee: exactly_once_v2
