@@ -10,11 +10,15 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.support.serializer.JsonSerde;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Configuration
+@EnableKafkaStreams
 public class HourlyUsersTopology {
     @Bean(name = "hourly_users")
     public Topology hourlyUsersTopology(StreamsBuilder builder) {
@@ -24,14 +28,14 @@ public class HourlyUsersTopology {
         // 1. 시간대 추출 (0~23)
         KStream<String, Event> events = builder.stream("log-data",
                         Consumed.with(Serdes.String(), eventSerde)
-                                .withTimestampExtractor((record, partitionTime) -> ((Event)record.value()).event_time().toEpochMilli()))
-                .filter((key, value) -> value != null && value.event_time() != null && value.user_id() != null);
+                                .withTimestampExtractor((record, partitionTime) -> ((Event)record.value()).eventTime().toEpochMilli()))
+                .filter((key, value) -> value != null && value.eventTime() != null && value.userId() != null);
 
-        // 2. (hour, user_id)로 그룹핑해서 user_id Set으로 집계 → Set.size()로 active user 수 뽑기
+        // 2. (hour, userId)로 그룹핑해서 userId Set으로 집계 → Set.size()로 active user 수 뽑기
         KTable<String, Set<String>> hourlyUsers = events
                 .map((k, v) -> {
-                    String hour = String.format("%02d", v.event_time().atZone(java.time.ZoneId.of("UTC")).getHour());
-                    return KeyValue.pair(hour, v.user_id());
+                    String hour = String.format("%02d", v.eventTime().atZone(java.time.ZoneId.of("UTC")).getHour());
+                    return KeyValue.pair(hour, v.userId());
                 })
                 .groupByKey(Grouped.with(Serdes.String(), Serdes.String()))
                 .aggregate(

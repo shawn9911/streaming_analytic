@@ -22,15 +22,15 @@ public class PurchaseDecileTopology {
         // 1. purchase 이벤트만 필터
         KStream<String, Event> purchases = builder.stream("log-data",
                         Consumed.with(Serdes.String(), eventSerde)
-                                .withTimestampExtractor((record, partitionTime) -> ((Event)record.value()).event_time().toEpochMilli()))
+                                .withTimestampExtractor((record, partitionTime) -> ((Event)record.value()).eventTime().toEpochMilli()))
                 .filter((key, value) -> value != null
-                        && "purchase".equals(value.event_type())
-                        && value.user_id() != null
+                        && "purchase".equals(value.eventType())
+                        && value.userId() != null
                         && value.price() > 0);
 
         // 2. user_id별 구매 금액 합계 집계
         KTable<String, Double> userPurchaseSum = purchases
-                .groupBy((key, value) -> value.user_id(), Grouped.with(Serdes.String(), eventSerde))
+                .groupBy((key, value) -> value.userId(), Grouped.with(Serdes.String(), eventSerde))
                 .aggregate(
                         () -> 0.0,
                         (userId, event, sum) -> sum + event.price(),

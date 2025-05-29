@@ -16,7 +16,7 @@ public class KafkaLogProducer {
     }
 
     public void sendToKafka(String topic, Log log) {
-        System.out.println("sendToKafka");
+        //System.out.println("sendToKafka");
         kafkaTemplate.send(topic, log);
     }
 
