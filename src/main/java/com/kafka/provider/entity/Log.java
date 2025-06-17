@@ -6,7 +6,6 @@ import lombok.*;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity
 public class Log {
 
     @Id

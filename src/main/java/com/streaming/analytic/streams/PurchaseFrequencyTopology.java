@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-//@Configuration
-//@EnableKafkaStreams
+@Configuration
+@EnableKafkaStreams
 public class PurchaseFrequencyTopology {
 
     private static final String AGGREGATE_KEY = "frequency";

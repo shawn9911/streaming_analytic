@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streaming.analytic.dto.Event;
 import com.streaming.analytic.dto.ViewCountEntry;
 import com.streaming.analytic.dto.ViewsResult;
+import jakarta.annotation.PostConstruct;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -21,15 +22,22 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-//@Configuration
-//@EnableKafkaStreams
+@Configuration
+@EnableKafkaStreams
 public class ViewsTopology {
 
     private static final Duration WINDOW_SIZE = Duration.ofMinutes(5);  // 테스트용 윈도우
     private static final int TOP_K = 10;
 
+    @PostConstruct
+    public void init() {
+        System.out.println(">>> ViewsTopology bean 생성 완료!");
+    }
+
     @Bean(name = "category_views")
     public Topology categoryViewsTopology(StreamsBuilder builder) {
+        System.out.println(">>> categoryViewsTopology() 호출됨");
+
         return buildViewsTopology(
                 builder,
                 "category_views",
@@ -83,8 +91,14 @@ public class ViewsTopology {
         KTable<Windowed<String>, Long> counts = views
                 .groupBy((key, value) -> keySelector.apply(value),
                         Grouped.with(Serdes.String(), eventSerde))
-                .windowedBy(SlidingWindows.ofTimeDifferenceWithNoGrace(WINDOW_SIZE))
-                .count();
+                .windowedBy(
+                        TimeWindows
+                                .ofSizeWithNoGrace(WINDOW_SIZE)      // 5분 윈도우, grace=0
+                                .advanceBy(Duration.ofMinutes(1))     // 1분마다 시작 경계 이동
+                )                .count()
+                .suppress(
+                        Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded())
+                );
 
         counts.toStream()
                 .map((windowedKey, count) -> KeyValue.pair(
@@ -94,12 +108,18 @@ public class ViewsTopology {
                 .groupByKey(Grouped.with(Serdes.Long(), new JsonSerde<>(ViewCountEntry.class)))
                 .aggregate(
                         HashMap::new,
-                        (windowStart, entry, aggregate) -> {
-                            aggregate.put(entry.getKey(), entry.getCount());
-                            return aggregate;
+                        (windowStart, entry, oldMap) -> {
+                            HashMap<String, Long> newMap = new HashMap<>(oldMap);  // 새 객체 생성
+                            newMap.put(entry.getKey(), entry.getCount());          // 최신 값으로 덮어쓰기
+                            return newMap;                                         // ← 객체가 달라지므로 forward
                         },
-                        Materialized.with(Serdes.Long(), new JsonSerde<>(new TypeReference<HashMap<String, Long>>() {}))
+                        Materialized.with(
+                                Serdes.Long(),                                         // 창 시작시각 key
+                                new JsonSerde<>(new TypeReference<HashMap<String, Long>>() {})
+                        )
                 )
+
+
                 .toStream()
                 .mapValues(countMap -> {
                     String json = toViewsJson(type, labelName, countMap, om);

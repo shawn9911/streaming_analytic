@@ -11,7 +11,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.4.3'
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 //    testImplementation 'org.apache.kafka:kafka-streams-test-utils:3.9.0'
@@ -20,15 +19,14 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter:3.4.3'
     implementation 'org.springframework.kafka:spring-kafka:3.3.3'
-    implementation 'com.mysql:mysql-connector-j:9.3.0'
     implementation 'org.apache.kafka:kafka-streams:3.9.0'
 
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.18.3'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.18.3'
 
-//    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.4.3'
-//    implementation 'com.mysql:mysql-connector-j:9.3.0'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.4.3'
+    implementation 'com.mysql:mysql-connector-j:9.3.0'
 
     compileOnly 'org.projectlombok:lombok:1.18.36'
     annotationProcessor 'org.projectlombok:lombok:1.18.36'
