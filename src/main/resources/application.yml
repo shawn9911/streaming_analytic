@@ -10,7 +10,7 @@ spring:
     show-sql: true
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:29092
     admin:
       auto-create: true
 
@@ -19,10 +19,14 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+    consumer:
+      group-id: com.kafka
 
     streams:
-      application-id: kafka
-      bootstrap-servers: localhost:9092
+      application-id: my-kafka-app
+      bootstrap-servers: localhost:29092
+      consumer:
+        auto-offset-reset: latest
       properties:
         cache.max.bytes.buffering: 0
         processing.guarantee: at_least_once

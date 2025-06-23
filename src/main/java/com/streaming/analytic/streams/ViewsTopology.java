@@ -3,6 +3,8 @@ package com.streaming.analytic.streams;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.streaming.analytic.dto.Event;
 import com.streaming.analytic.dto.ViewCountEntry;
 import com.streaming.analytic.dto.ViewsResult;
@@ -40,7 +42,7 @@ public class ViewsTopology {
 
         return buildViewsTopology(
                 builder,
-                "category_views",
+                "result-category-views",
                 "category_code",
                 "category_views",
                 "Category View Per Hour"
@@ -51,7 +53,7 @@ public class ViewsTopology {
     public Topology brandViewsTopology(StreamsBuilder builder) {
         return buildViewsTopology(
                 builder,
-                "brand_views",
+                "result-brand-views",
                 "brand",
                 "brand_views",
                 "Brand View Per Hour"
@@ -65,8 +67,12 @@ public class ViewsTopology {
             String type,
             String labelName
     ) {
-        JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class);
         ObjectMapper om = new ObjectMapper();
+        om.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        om.registerModule(new JavaTimeModule());
+
+        JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class, om);
+
 
         Function<Event, String> keySelector = e -> {
             switch (fieldName) {

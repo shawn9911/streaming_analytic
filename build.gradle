@@ -32,6 +32,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.36'
 
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.3'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket:3.4.3'
 
 }
 

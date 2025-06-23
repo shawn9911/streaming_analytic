@@ -2,6 +2,8 @@ package com.streaming.analytic.streams;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.streaming.analytic.dto.Event;
 import com.streaming.analytic.dto.ViewsResult;
 import org.apache.kafka.common.serialization.Serdes;
@@ -22,8 +24,12 @@ import java.util.stream.Collectors;
 public class HourlyUsersTopology {
     @Bean(name = "hourly_users")
     public Topology hourlyUsersTopology(StreamsBuilder builder) {
-        JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class);
         ObjectMapper om = new ObjectMapper();
+        om.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        om.registerModule(new JavaTimeModule());
+
+        JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class, om);
+
 
         // 1. 시간대 추출 (0~23)
         KStream<String, Event> events = builder.stream("log-data",
@@ -54,7 +60,7 @@ public class HourlyUsersTopology {
                 )
                 .toStream()
                 .mapValues(hourlyCountMap -> toHourlyUsersJson(hourlyCountMap, om))
-                .to("hourly_users", Produced.with(Serdes.String(), Serdes.String()));
+                .to("result-hourly-users", Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }

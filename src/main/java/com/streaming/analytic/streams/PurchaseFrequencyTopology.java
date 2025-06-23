@@ -2,6 +2,8 @@ package com.streaming.analytic.streams;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.streaming.analytic.dto.Event;
 import com.streaming.analytic.dto.ViewsResult;
 import org.apache.kafka.common.serialization.Serdes;
@@ -31,8 +33,12 @@ public class PurchaseFrequencyTopology {
 
     @Bean(name = "purchase_frequency")
     public Topology purchaseFrequencyTopology(StreamsBuilder builder) {
-        JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class);
         ObjectMapper om = new ObjectMapper();
+        om.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        om.registerModule(new JavaTimeModule());
+
+        JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class, om);
+
 
         // 1. purchase 이벤트 필터링
         KStream<String, Event> purchases = builder.stream(
@@ -74,7 +80,7 @@ public class PurchaseFrequencyTopology {
         // 5. 단일 JSON 메시지 전송  (3번 적용)
         aggregated.toStream()
                 .mapValues(freqMap -> toPurchaseFrequencyJson(freqMap, om))
-                .to("purchase_frequency", Produced.with(Serdes.String(), Serdes.String()));
+                .to("result-purchase-frequency", Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }
