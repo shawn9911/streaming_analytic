@@ -100,7 +100,7 @@ public class ViewsTopology {
                 .windowedBy(
                         TimeWindows
                                 .ofSizeWithNoGrace(WINDOW_SIZE)      // 5분 윈도우, grace=0
-                                .advanceBy(Duration.ofMinutes(1))     // 1분마다 시작 경계 이동
+                                //.advanceBy(Duration.ofMinutes(1))     // 1분마다 시작 경계 이동
                 )                .count()
                 .suppress(
                         Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded())

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.streaming.analytic.dto.Event;
 import com.streaming.analytic.dto.ViewsResult;
+import com.streaming.analytic.dto.HourlyCount;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -30,14 +31,13 @@ public class HourlyUsersTopology {
 
         JsonSerde<Event> eventSerde = new JsonSerde<>(Event.class, om);
 
-
-        // 1. 시간대 추출 (0~23)
+        // 1. 이벤트 스트림
         KStream<String, Event> events = builder.stream("log-data",
                         Consumed.with(Serdes.String(), eventSerde)
                                 .withTimestampExtractor((record, partitionTime) -> ((Event)record.value()).eventTime().toEpochMilli()))
                 .filter((key, value) -> value != null && value.eventTime() != null && value.userId() != null);
 
-        // 2. (hour, userId)로 그룹핑해서 userId Set으로 집계 → Set.size()로 active user 수 뽑기
+        // 2. 시간별로 userId Set 집계
         KTable<String, Set<String>> hourlyUsers = events
                 .map((k, v) -> {
                     String hour = String.format("%02d", v.eventTime().atZone(java.time.ZoneId.of("UTC")).getHour());
@@ -50,13 +50,28 @@ public class HourlyUsersTopology {
                         Materialized.with(Serdes.String(), new JsonSerde<>(new TypeReference<Set<String>>(){}))
                 );
 
-        // 3. 결과 변환
+        // 3. all_hours 키로 매핑 → 하나의 Map에 누적
         hourlyUsers.toStream()
-                .groupByKey(Grouped.with(Serdes.String(), new JsonSerde<>(new TypeReference<Set<String>>(){})))
+                .map((hour, userSet) ->
+                        KeyValue.pair(
+                                "all_hours",
+                                new HourlyCount(userSet.size(), hour)
+                        )
+                )
+                .groupByKey(Grouped.with(
+                        Serdes.String(),
+                        new JsonSerde<>(HourlyCount.class, om)
+                ))
                 .aggregate(
-                        () -> new HashMap<String, Integer>(),
-                        (hour, userSet, agg) -> { agg.put(hour, userSet.size()); return agg; },
-                        Materialized.with(Serdes.String(), new JsonSerde<>(new TypeReference<HashMap<String, Integer>>(){}))
+                        HashMap::new,
+                        (aggKey, hc, aggMap) -> {
+                            aggMap.put(hc.getHour(), hc.getCount());
+                            return aggMap;
+                        },
+                        Materialized.with(
+                                Serdes.String(),
+                                new JsonSerde<>(new TypeReference<HashMap<String, Integer>>(){} , om)
+                        )
                 )
                 .toStream()
                 .mapValues(hourlyCountMap -> toHourlyUsersJson(hourlyCountMap, om))
@@ -67,7 +82,6 @@ public class HourlyUsersTopology {
 
     // JSON 변환 함수
     private String toHourlyUsersJson(Map<String, Integer> hourlyCountMap, ObjectMapper om) {
-        // labels: 00~23
         List<String> labels = new ArrayList<>();
         List<Integer> data = new ArrayList<>();
         for(int i = 0; i < 24; i++) {
@@ -75,7 +89,8 @@ public class HourlyUsersTopology {
             labels.add(h);
             data.add(hourlyCountMap.getOrDefault(h, 0));
         }
-        ViewsResult result = new ViewsResult("hourly_users", "Hourly Active Users", labels, data.stream().map(Long::valueOf).collect(Collectors.toList()));
+        ViewsResult result = new ViewsResult("hourly_users", "Hourly Active Users", labels,
+                data.stream().map(Long::valueOf).collect(Collectors.toList()));
         try {
             return om.writeValueAsString(result);
         } catch (Exception e) {

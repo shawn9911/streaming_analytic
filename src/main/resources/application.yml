@@ -23,7 +23,7 @@ spring:
       group-id: com.kafka
 
     streams:
-      application-id: my-kafka-app
+      application-id: my-kafka-app7
       bootstrap-servers: localhost:29092
       consumer:
         auto-offset-reset: latest
